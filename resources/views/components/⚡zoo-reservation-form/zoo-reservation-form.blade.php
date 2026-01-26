@@ -5,17 +5,17 @@
             {{ session('success') }}
         </div>
     @endif
-    <h1 class="font-bold text-3xl">Reserveer je bezoek aan de Zoo!</h1>
+    <h1 class="font-bold text-3xl">{{ __('zoo.form.title') }}</h1>
     <form wire:submit.prevent="save" class="flex flex-col gap-2 justify-start">
         <div class="flex flex-col">
-            <label>Datum*</label>
+            <label>{{ __('zoo.form.date.label') }}</label>
             <input type="date" wire:model="date" class="w-fit border-2 border-black rounded-sm">
             @error('date') <div class="text-sm text-red-600">{{ $message }}</div>@enderror
         </div>
         <div class="flex flex-col">
-            <label>Tijdslot*</label>
+            <label>{{ __('zoo.form.timeslot.label') }}</label>
             <select wire:model="timeslot_id" class="w-fit border-2 border-black rounded-sm">
-                <option value="">Kies een tijdslot</option>
+                <option value="">{{ __('zoo.form.timeslot.placeholder') }}</option>
 
                 @foreach ($timeslots as $timeslot)
                     <option value="{{ $timeslot->id }}">
@@ -25,12 +25,12 @@
             </select>
             @if (!is_null($remaining))
                 <div class="text-sm">
-                    Nog <span class="font-semibold">{{ $remaining }}</span> plaatsen beschikbaar.
+                    {!! __('zoo.form.places_counter.places_left', ['count' => "<strong>$remaining</strong>"]) !!}
                 </div>
             @endif
             @if ($remaining === 0)
                 <div class="text-sm text-red-600">
-                    Dit tijdslot is volzet
+                    {{ __('zoo.form.places_counter.no_places_left') }}
                 </div>
             @endif
             @error('timeslot_id') <div class="text-sm text-red-600">{{ $message }}</div>@enderror
@@ -38,14 +38,14 @@
 
         <div class="flex flex-col gap-4">
             <div class="flex flex-col" items-center gap-3>
-                <h2 class="font-semibold text-xl">Bezoekers</h2>
+                <h2 class="font-semibold text-xl">{{ __('zoo.form.visitors.title') }}</h2>
                 <button
                     type="button"
                     wire:click="addVisitor"
                     @disabled($remaining === 0 || (!is_null($remaining) && count($visitors) >= $remaining))
                     class="w-fit rounded-md border border-black px-3 py-1 font-medium hover:bg-gray-100"
                 >
-                    + Bezoeker toevoegen
+                    {{ __('zoo.form.visitors.addbutton') }}
                 </button>
             </div>
         </div>
@@ -54,7 +54,7 @@
             @foreach ($visitors as $index => $visitor)
                 <div wire:key="visitor-{{ $visitor['key'] }}" class="rounded-md border w-fit border-black p-3">
                     <div class="flex items-center justify-between">
-                        <p class="font-semibold">Bezoeker {{ $index + 1 }}</p>
+                        <p class="font-semibold">{{ __('zoo.form.visitors.label') }} {{ $index + 1 }}</p>
 
                         @if (count($visitors) > 1)
                             <button
@@ -62,23 +62,23 @@
                                 wire:click="removeVisitor('{{  $visitor['key'] }}')"
                                 class="text-sm underline hover:opacity-80"
                             >
-                                Verwijderen
+                                {{ __('zoo.delete') }}
                             </button>
                         @endif
                     </div>
                     <div class="mt-3 flex flex-col gap-2">
                         <div class="flex flex-col">
-                            <label>Voornaam*</label>
+                            <label>{{ __('zoo.firstname') }}*</label>
                             <input type="text" wire:model="visitors.{{ $index }}.voornaam" class="w-fit border-2 pl-1 border-black rounded-sm">
                             @error("visitors.$index.voornaam") <div class="text-sm text-red-600">{{ $message }}</div>@enderror
                         </div>
                         <div class="flex flex-col">
-                            <label>Achternaam*</label>
+                            <label>{{ __('zoo.lastname') }}*</label>
                             <input type="text" wire:model="visitors.{{ $index }}.achternaam" class="w-fit border-2 pl-1 border-black rounded-sm">
                             @error("visitors.$index.achternaam") <div class="text-sm text-red-600">{{ $message }}</div>@enderror
                         </div>
                         <div class="flex flex-col">
-                            <label>Abonnementsnummer</label>
+                            <label>{{ __('zoo.subscription_nr') }}</label>
                             <input type="text" wire:model="visitors.{{ $index }}.abonr" class="w-fit border-2 pl-1 border-black rounded-sm">
                             @error("visitors.$index.abonr") <div class="text-sm text-red-600">{{ $message }}</div>@enderror
                         </div>
@@ -99,7 +99,7 @@
            focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2"
         >
             <span class="relative z-10 transition group-hover:text-white">
-                Reserveer!
+                {{ __('zoo.form.reservations_button') }}
             </span>
             <span
                 class="absolute inset-0 bg-black transform scale-x-0 origin-left

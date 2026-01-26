@@ -121,7 +121,7 @@ class ReservationController extends Controller
                 ])->values(),
                 'created_at' => $reservation->created_at?->toISOString(),
             ],
-        ], 201);
+        ], 200);
 
     }
 }

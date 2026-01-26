@@ -3,15 +3,13 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Models\TimeSlot;
+use App\Models\TimeSlotCapacity;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Http\Request;
 
 class AvailabilityController extends Controller
 {
-    private const CAPACITY_PER_TIMESLOT = 200;
-
     public function index(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -25,35 +23,50 @@ class AvailabilityController extends Controller
             ], 422);
         }
 
-        $validated = $validator->validated();
-        $date = $validated['date'] ?? now()->toDateString();
+        $date = $validator->validated()['date'] ?? now()->toDateString();
 
-        $timeSlots = TimeSlot::query()
-            ->where('active', 1)
-            ->get()
-            ->map(function ($slot) use ($date) {
-                $used = DB::table('reservations')
-                    ->join('visitors', 'visitors.reservation_id', '=', 'reservations.id')
-                    ->where('reservations.timeslot_id', $slot->id)
-                    ->whereDate('reservations.date', $date)
-                    ->count();
+        // 1) haal capacities van die dag op + timeslot label
+        $capacities = TimeSlotCapacity::query()
+            ->with(['timeSlot:id,label,start_time,end_time,active'])
+            ->whereDate('date', $date)
+            ->whereHas('timeSlot', fn ($q) => $q->where('active', 1))
+            ->get();
+
+        $capacityIds = $capacities->pluck('id');
+
+        // 2) tel gebruikte plekken (aantal visitors) per time_slot_capacity_id in 1 query
+        // used = aantal bezoekers (visitors) gekoppeld aan reservations in dat slot
+        $usedByCapacityId = DB::table('reservations')
+            ->join('visitors', 'visitors.reservation_id', '=', 'reservations.id')
+            ->whereIn('reservations.time_slot_capacity_id', $capacityIds)
+            ->groupBy('reservations.time_slot_capacity_id')
+            ->selectRaw('reservations.time_slot_capacity_id as id, COUNT(*) as used')
+            ->pluck('used', 'id');
+
+        $data = $capacities
+            ->sortBy(fn ($cap) => $cap->timeSlot?->start_time)
+            ->values()
+            ->map(function ($cap) use ($usedByCapacityId) {
+                $used = (int) ($usedByCapacityId[$cap->id] ?? 0);
+                $capacity = (int) $cap->capacity;
+                $available = max(0, $capacity - $used);
 
                 return [
-                    'id'        => $slot->id,
-                    'label'     => $slot->label,
-                    'capacity'  => self::CAPACITY_PER_TIMESLOT,
-                    'used'      => $used,
-                    'available' => max(0, self::CAPACITY_PER_TIMESLOT - $used),
-                    'full'      => $used >= self::CAPACITY_PER_TIMESLOT,
+                    'time_slot_capacity_id' => $cap->id,
+                    'time_slot_id' => $cap->time_slot_id,
+                    'label' => $cap->timeSlot?->label,
+                    'capacity' => $capacity,
+                    'used' => $used,
+                    'available' => $available,
+                    'full' => $available <= 0,
                 ];
             });
 
         return response()->json([
             'meta' => [
                 'date' => $date,
-                'capacity_per_timeslot' => self::CAPACITY_PER_TIMESLOT,
             ],
-            'data' => $timeSlots,
+            'data' => $data,
         ]);
     }
 }

@@ -10,6 +10,8 @@ use App\Models\TimeSlot;
 use App\Models\Visitor;
 use App\Models\Reservation;
 
+use Illuminate\Support\Facades\Http;
+
 
 new class extends Component
 {

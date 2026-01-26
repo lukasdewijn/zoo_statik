@@ -18,4 +18,9 @@ class TimeSlot extends Model
     {
         return $this->hasMany(Reservation::class, 'timeslot_id');
     }
+
+    public function capacities()
+    {
+        return $this-> hasMany(TimeSlotCapacity::class);
+    }
 }
