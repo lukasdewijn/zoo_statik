@@ -10,11 +10,18 @@ use App\Models\TimeSlot;
 use App\Models\Visitor;
 use App\Models\Reservation;
 
-use Illuminate\Support\Facades\Http;
+
+/**
+ * @property bool $canAddVisitor
+ * @property bool $canSubmit
+ * @property bool $isSoldOut
+ * @property bool $showRemaining
+ */
 
 
 new class extends Component
 {
+    private const CAPACITY = 200;
 
     public $date;
     public $timeslot_id;
@@ -22,7 +29,7 @@ new class extends Component
 
     public array $visitors = [];
 
-    public int $capacity = 200;
+    public int $capacity = self::CAPACITY;
     public ?int $remaining = null;//null = nog niet gekozen
 
     public function mount()
@@ -53,7 +60,7 @@ new class extends Component
             // je probeert meer visitors toe te voegen dan er plaatsen zijn
             return;
         }
-        if(count($this->visitors) >= 200) {
+        if(count($this->visitors) >= self::CAPACITY) {
             return;
         }
         $this->visitors[] = $this->emptyVisitors();
@@ -155,10 +162,11 @@ new class extends Component
                 ->count();
 
             $newCount = count($validated['visitors']);
-            if ($newCount + $currentCount > 200) {
+            if ($newCount + $currentCount > self::CAPACITY) {
                 // gooi exception zodat transaction netjes rollbackt
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    'timeslot_id' => 'Dit tijdslot is volzet (max 200 bezoekers).',
+                    'timeslot_id' => __('zoo.form.errors.timeslot_full', ['capacity' => self::CAPACITY,
+                    ]),
                 ]);
             }
 
@@ -190,4 +198,22 @@ new class extends Component
         return redirect()->route('reservations.success', $reservation->public_code);
     }
 
+    public function getCanAddVisitorProperty(): bool
+    {
+        if (is_null($this->remaining)) return true;
+        return $this->remaining > 0 && count($this->visitors) < $this->remaining;
+    }
+    public function getIsSoldOutProperty(): bool
+    {
+        return $this->remaining === 0;
+    }
+    public function getCanSubmitProperty(): bool
+    {
+        if (is_null($this->remaining)) return true;
+        return $this->remaining > 0 && count($this->visitors) <= $this->remaining;
+    }
+    public function getShowRemainingProperty(): bool
+    {
+        return $this->remaining !== null;
+    }
 };

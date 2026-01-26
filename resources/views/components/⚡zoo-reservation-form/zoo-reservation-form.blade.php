@@ -23,12 +23,12 @@
                     </option>
                 @endforeach
             </select>
-            @if (!is_null($remaining))
+            @if ($this->showRemaining)
                 <div class="text-sm">
                     {!! __('zoo.form.places_counter.places_left', ['count' => "<strong>$remaining</strong>"]) !!}
                 </div>
             @endif
-            @if ($remaining === 0)
+            @if ($this->isSoldOut)
                 <div class="text-sm text-red-600">
                     {{ __('zoo.form.places_counter.no_places_left') }}
                 </div>
@@ -42,7 +42,7 @@
                 <button
                     type="button"
                     wire:click="addVisitor"
-                    @disabled($remaining === 0 || (!is_null($remaining) && count($visitors) >= $remaining))
+                    @disabled(! $this->canAddVisitor)
                     class="w-fit rounded-md border border-black px-3 py-1 font-medium hover:bg-gray-100"
                 >
                     {{ __('zoo.form.visitors.addbutton') }}
@@ -52,47 +52,19 @@
 
         <div class="flex flex-row gap-2">
             @foreach ($visitors as $index => $visitor)
-                <div wire:key="visitor-{{ $visitor['key'] }}" class="rounded-md border w-fit border-black p-3">
-                    <div class="flex items-center justify-between">
-                        <p class="font-semibold">{{ __('zoo.form.visitors.label') }} {{ $index + 1 }}</p>
-
-                        @if (count($visitors) > 1)
-                            <button
-                                type="button"
-                                wire:click="removeVisitor('{{  $visitor['key'] }}')"
-                                class="text-sm underline hover:opacity-80"
-                            >
-                                {{ __('zoo.delete') }}
-                            </button>
-                        @endif
-                    </div>
-                    <div class="mt-3 flex flex-col gap-2">
-                        <div class="flex flex-col">
-                            <label>{{ __('zoo.firstname') }}*</label>
-                            <input type="text" wire:model="visitors.{{ $index }}.voornaam" class="w-fit border-2 pl-1 border-black rounded-sm">
-                            @error("visitors.$index.voornaam") <div class="text-sm text-red-600">{{ $message }}</div>@enderror
-                        </div>
-                        <div class="flex flex-col">
-                            <label>{{ __('zoo.lastname') }}*</label>
-                            <input type="text" wire:model="visitors.{{ $index }}.achternaam" class="w-fit border-2 pl-1 border-black rounded-sm">
-                            @error("visitors.$index.achternaam") <div class="text-sm text-red-600">{{ $message }}</div>@enderror
-                        </div>
-                        <div class="flex flex-col">
-                            <label>{{ __('zoo.subscription_nr') }}</label>
-                            <input type="text" wire:model="visitors.{{ $index }}.abonr" class="w-fit border-2 pl-1 border-black rounded-sm">
-                            @error("visitors.$index.abonr") <div class="text-sm text-red-600">{{ $message }}</div>@enderror
-                        </div>
-                    </div>
-
+                <div wire:key="visitor-{{ $visitor['key'] }}">
+                    <x-zoo.visitor-card
+                        :index="$index"
+                        :visitor="$visitor"
+                        :can-remove="count($visitors) > 1"
+                    />
                 </div>
-
             @endforeach
         </div>
 
-
         <button
             type="submit"
-            @disabled($remaining === 0 || (!is_null($remaining) && count($visitors) > $remaining))
+            @disabled(! $this->canSubmit)
             class="w-fit rounded-lg border-2 border-black bg-yellow-400 px-6 py-2
            font-semibold text-black shadow-sm
            transition hover:bg-yellow-500 hover:shadow-md
