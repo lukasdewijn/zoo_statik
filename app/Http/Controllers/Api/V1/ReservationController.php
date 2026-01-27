@@ -10,6 +10,9 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Notification;
+use App\Notifications\ReservationConfirmed;
+
 
 class ReservationController extends Controller
 {
@@ -23,6 +26,7 @@ class ReservationController extends Controller
             'visitors.*.first_name' => ['required', 'string'],
             'visitors.*.last_name' => ['required', 'string'],
             'visitors.*.subscription_number' => ['nullable', new SubscriptionNumber()],
+            'contact_email' => ['required', 'email'],
         ]);
 
 
@@ -63,6 +67,10 @@ class ReservationController extends Controller
                         : null,
                 ])->all()
             );
+
+            Notification::route('mail', $reservation->contact_email)
+                ->notify(new ReservationConfirmed($reservation));
+
 
             return $reservation->load(['timeSlot', 'visitors']);
         });

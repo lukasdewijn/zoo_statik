@@ -1,4 +1,3 @@
-
 <div>
     @if (session('success'))
         <div class="text-sm text-green-600">
@@ -10,7 +9,8 @@
         <div class="flex flex-col">
             <label>{{ __('zoo.form.date.label') }}</label>
             <input type="date" wire:model="date" class="w-fit border-2 border-black rounded-sm">
-            @error('date') <div class="text-sm text-red-600">{{ $message }}</div>@enderror
+            @error('date')
+            <div class="text-sm text-red-600">{{ $message }}</div>@enderror
         </div>
         <div class="flex flex-col">
             <label>{{ __('zoo.form.timeslot.label') }}</label>
@@ -33,7 +33,22 @@
                     {{ __('zoo.form.places_counter.no_places_left') }}
                 </div>
             @endif
-            @error('timeslot_id') <div class="text-sm text-red-600">{{ $message }}</div>@enderror
+            @error('timeslot_id')
+            <div class="text-sm text-red-600">{{ $message }}</div>@enderror
+        </div>
+
+        <div class="flex flex-col w-fit">
+            <label>{{ __('zoo.email') }}*</label>
+
+            <input
+                type="email"
+                wire:model.blur="contact_email"
+                class="w-full max-w-sm border-2 border-black rounded-sm px-2 py-1"
+            >
+
+            @error('contact_email')
+            <div class="text-sm text-red-600">{{ $message }}</div>
+            @enderror
         </div>
 
         <div class="flex flex-col gap-4">

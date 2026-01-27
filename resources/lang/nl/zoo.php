@@ -31,10 +31,16 @@ return [
 
     'success' => [
         'title' => '✅ Reservatie gelukt!',
-        'number_visitors' => 'Aantal bezoekers',
-        'new_reservation'=>'Nieuwe reservatie',
+        'number_visitors' => 'Bezoekers',
+        'new_reservation' => 'Nieuwe reservatie',
+
+        'confirmation_sent' =>
+            '📧 We hebben een bevestigingsmail gestuurd naar :email. Controleer ook je spamfolder.',
     ],
 
+
+
+    'email' => 'Email',
     'firstname' => 'Voornaam',
     'lastname' => 'Achternaam',
     'delete' => 'Verwijder',

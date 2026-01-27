@@ -21,40 +21,25 @@
     </div>
 
     <div class="mt-3 flex flex-col gap-2">
-        <div class="flex flex-col">
-            <label>{{ __('zoo.firstname') }}*</label>
-            <input
-                type="text"
-                wire:model="visitors.{{ $index }}.voornaam"
-                class="w-fit border-2 pl-1 border-black rounded-sm"
-            >
-            @error("visitors.$index.voornaam")
-            <div class="text-sm text-red-600">{{ $message }}</div>
-            @enderror
+        <div class="mt-3 flex flex-col gap-2">
+            <x-zoo.field
+                :label="__('zoo.firstname') . '*'"
+                :model="'visitors.' . $index . '.voornaam'"
+                :error="'visitors.' . $index . '.voornaam'"
+            />
+
+            <x-zoo.field
+                :label="__('zoo.lastname') . '*'"
+                :model="'visitors.' . $index . '.achternaam'"
+                :error="'visitors.' . $index . '.achternaam'"
+            />
+
+            <x-zoo.field
+                :label="__('zoo.subscription_nr')"
+                :model="'visitors.' . $index . '.abonr'"
+                :error="'visitors.' . $index . '.abonr'"
+            />
         </div>
 
-        <div class="flex flex-col">
-            <label>{{ __('zoo.lastname') }}*</label>
-            <input
-                type="text"
-                wire:model="visitors.{{ $index }}.achternaam"
-                class="w-fit border-2 pl-1 border-black rounded-sm"
-            >
-            @error("visitors.$index.achternaam")
-            <div class="text-sm text-red-600">{{ $message }}</div>
-            @enderror
-        </div>
-
-        <div class="flex flex-col">
-            <label>{{ __('zoo.subscription_nr') }}</label>
-            <input
-                type="text"
-                wire:model="visitors.{{ $index }}.abonr"
-                class="w-fit border-2 pl-1 border-black rounded-sm"
-            >
-            @error("visitors.$index.abonr")
-            <div class="text-sm text-red-600">{{ $message }}</div>
-            @enderror
-        </div>
     </div>
 </div>

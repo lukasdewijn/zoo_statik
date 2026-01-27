@@ -11,6 +11,9 @@ class Reservation extends Model
         'public_code',
         'date',
         'timeslot_id',
+        'contact_email',
+        'status',
+        'cancelled_at'
     ];
 
     public function visitors()

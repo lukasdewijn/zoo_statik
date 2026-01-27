@@ -4,6 +4,10 @@
     <div class="mx-auto max-w-xl space-y-4 p-6">
         <h1 class="text-3xl font-bold">{{ __('zoo.success.title') }}</h1>
 
+        <div class="rounded-lg border border-green-600 bg-green-50 p-4 text-green-800">
+            {{ __('zoo.success.confirmation_sent', ['email' => $reservation->contact_email]) }}
+        </div>
+
         <div class="rounded-lg border border-black p-4">
             <p><span class="font-semibold">{{ __('zoo.reservation_code') }}:</span> {{ $reservation->public_code }}</p>
             <p><span class="font-semibold">{{ __('zoo.date') }}:</span> {{ $reservation->date->format('d/m/Y') }}</p>

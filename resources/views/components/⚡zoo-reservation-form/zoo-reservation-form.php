@@ -10,6 +10,9 @@ use App\Models\TimeSlot;
 use App\Models\Visitor;
 use App\Models\Reservation;
 
+use Illuminate\Support\Facades\Notification;
+use App\Notifications\ReservationConfirmed;
+
 
 /**
  * @property bool $canAddVisitor
@@ -22,16 +25,13 @@ use App\Models\Reservation;
 new class extends Component
 {
     private const CAPACITY = 200;
-
-    public $date;
-    public $timeslot_id;
+    public ? string $date = null;
+    public ?int $timeslot_id = null;
     public $timeslots = [];
-
     public array $visitors = [];
-
     public int $capacity = self::CAPACITY;
-    public ?int $remaining = null;//null = nog niet gekozen
-
+    public ?int $remaining = null;
+    public string $contact_email = '';
     public function mount()
     {
         $this->timeslots = TimeSlot::where('active',true)
@@ -79,7 +79,7 @@ new class extends Component
 
         $this->refreshRemaining();
     }
-    private function checkAboNummer(string $abonr){
+    private function isValidAboNumber(string $abonr){
         if($abonr == null){return true;}
         //verwijder alles dat geen cijfer is
         $digits = preg_replace('/\D/', '', $abonr);
@@ -123,9 +123,10 @@ new class extends Component
         $validated = $this->validate([
             'date' => ['required','date','after_or_equal:today'],
             'timeslot_id' => ['required', 'exists:time_slots,id'],
+            'contact_email' => ['required','email', 'max:255'],
 
             // validate each visitor
-            'visitors' => ['required','array', 'min:1', 'max:200'],
+            'visitors' => ['required','array', 'min:1', 'max:' . self::CAPACITY],
             'visitors.*.voornaam' => ['required','string', 'max:255'],
             'visitors.*.achternaam' => ['required','string', 'max:255'],
             'visitors.*.abonr' => ['nullable','string', 'max:255'],
@@ -143,7 +144,7 @@ new class extends Component
         }
 
         foreach ($this->visitors as $index => $visitor) {
-            if(! $this->checkAboNummer($visitor['abonr'])){
+            if(! $this->isValidAboNumber($visitor['abonr'])){
                 $this->addError("visitors.$index.abonr", "Ongeldige abonnementsnummer");
                 return;
             }
@@ -171,9 +172,9 @@ new class extends Component
             }
 
             $reservation = Reservation::create([
-                'public_code' => (string) Str::uuid(),
                 'date' => $validated['date'],
                 'timeslot_id' => $validated['timeslot_id'],
+                'contact_email' => $validated['contact_email'],
             ]);
 
             foreach ($validated['visitors'] as $visitor) {
@@ -188,9 +189,11 @@ new class extends Component
             return $reservation; // <<< belangrijk
         });
 
+        Notification::route('mail', $reservation->contact_email)
+            ->notify(new ReservationConfirmed($reservation));
 
         //form reset + message
-        $this->reset(['date','timeslot_id']);
+        $this->reset(['date','timeslot_id', 'contact_email']);
         $this->visitors = [$this->emptyVisitors()];
 
         session()->flash('success', 'Reservation succesvol toegevoegd.');
