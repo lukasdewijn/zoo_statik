@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Reservations\Tables;
 
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -20,32 +21,52 @@ class ReservationsTable
                     ->limit(8)
                     ->copyable()
                     ->searchable(),
+
                 TextColumn::make('date')
                     ->date('D d M Y')
                     ->sortable(),
+
                 TextColumn::make('timeSlot.label')
                     ->label('Timeslot')
                     ->sortable()
                     ->searchable(),
+
                 TextColumn::make('visitors_count')
                     ->label('# Visitors')
                     ->numeric()
                     ->sortable(),
+
+                TextColumn::make('status')
+                    ->badge()
+                    ->color(fn (string $state) => match ($state) {
+                        'cancelled' => 'danger',
+                        'active' => 'success',
+                        default => 'gray',
+                    }),
+
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->filters([
-                //
-            ])
             ->recordActions([
                 ViewAction::make(),
-                EditAction::make(),
+
+                EditAction::make()
+                    ->disabled(fn ($record) => $record->status === 'cancelled'),
+
+                Action::make('cancel')
+                    ->label('Cancel')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->visible(fn ($record) => $record->status !== 'cancelled')
+                    ->action(fn ($record) => $record->update(['status' => 'cancelled'])),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

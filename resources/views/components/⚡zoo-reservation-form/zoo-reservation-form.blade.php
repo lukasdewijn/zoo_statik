@@ -93,6 +93,7 @@
                transition-transform group-hover:scale-x-100"
             ></span>
         </button>
+        <div>{{ __('') }}</div>
 
     </form>
 </div>

@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 use App\Models\TimeSlot;
 use App\Models\Visitor;
 use App\Models\Reservation;
+use App\Models\TimeSlotCapacity;
 
 use Illuminate\Support\Facades\Notification;
 use App\Notifications\ReservationConfirmed;
@@ -103,6 +104,7 @@ new class extends Component
             ->join('reservations', 'visitors.reservation_id', '=', 'reservations.id')
             ->whereDate('reservations.date', $this->date)
             ->where('reservations.timeslot_id', $this->timeslot_id)
+            ->where('reservations.status', 'confirmed')
             ->count();
     }
     private function refreshRemaining(): void
@@ -112,9 +114,11 @@ new class extends Component
             return;
         }
 
+        $this->capacity = $this->capacityForSelectedSlot($this->date, $this->timeslot_id);
         $current = $this->currentCountForSelectedSlot();
         $this->remaining = max(0, $this->capacity - $current);
     }
+
     public function updatedDate(): void{$this->refreshRemaining();}
     public function updatedTimeslotId(): void{$this->refreshRemaining();}
 
@@ -154,7 +158,11 @@ new class extends Component
 
         $reservation = DB::transaction(function () use ($validated) {
             // Lock zodat 2 submits niet tegelijk kunnen tell+inserten
-            TimeSlot::whereKey($validated['timeslot_id'])->lockForUpdate()->first();
+            TimeSlotCapacity::query()
+                ->whereDate('date', $validated['date'])
+                ->where('time_slot_id', $validated['timeslot_id'])
+                ->lockForUpdate()
+                ->first();
 
             $currentCount = Visitor::query()
                 ->join('reservations', 'visitors.reservation_id', '=', 'reservations.id')
@@ -163,10 +171,12 @@ new class extends Component
                 ->count();
 
             $newCount = count($validated['visitors']);
-            if ($newCount + $currentCount > self::CAPACITY) {
-                // gooi exception zodat transaction netjes rollbackt
+            $capacity = $this->capacityForSelectedSlot($validated['date'], $validated['timeslot_id']);
+
+            if ($newCount + $currentCount > $capacity) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    'timeslot_id' => __('zoo.form.errors.timeslot_full', ['capacity' => self::CAPACITY,
+                    'timeslot_id' => __('zoo.form.errors.timeslot_full', [
+                        'capacity' => $capacity,
                     ]),
                 ]);
             }
@@ -199,6 +209,22 @@ new class extends Component
         session()->flash('success', 'Reservation succesvol toegevoegd.');
 
         return redirect()->route('reservations.success', $reservation->public_code);
+    }
+
+    private function capacityForSelectedSlot(?string $date = null, ?int $timeslotId = null): int
+    {
+        $date = $date ?? $this->date;
+        $timeslot = $timeslotId ?? $this->timeslot_id;
+
+        if(!$date || !$timeslotId)
+        {
+            return self::CAPACITY;
+        }
+
+        return (int) (TimeSlotCapacity::query()
+        ->whereDate('date', $date)
+        ->where('time_slot_id', $timeslotId)
+        ->value('capacity') ?? self::CAPACITY);
     }
 
     public function getCanAddVisitorProperty(): bool

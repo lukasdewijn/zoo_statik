@@ -22,9 +22,12 @@ class TimeSlotCapacitiesTable
                 $query->select('time_slot_capacities.*')
                     ->selectSub(
                         Reservation::query()
-                            ->selectRaw('COUNT(*)')
+                            ->from('reservations')
+                            ->join('visitors', 'visitors.reservation_id', '=', 'reservations.id')
+                            ->selectRaw('COUNT(visitors.id)')
                             ->whereColumn('reservations.timeslot_id', 'time_slot_capacities.time_slot_id')
-                            ->whereColumn('reservations.date', 'time_slot_capacities.date'),
+                            ->whereColumn('reservations.date', 'time_slot_capacities.date')
+                            ->where('reservations.status', 'confirmed'),
                         'reserved_count'
                     );
             })

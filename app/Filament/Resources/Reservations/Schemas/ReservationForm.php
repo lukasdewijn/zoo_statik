@@ -16,11 +16,12 @@ class ReservationForm
         return $schema->components([
             Section::make('Reservation')
                 ->columns(2)
+                ->disabled(fn ($record) => $record?->status === 'cancelled')
                 ->schema([
                     TextInput::make('public_code')
                         ->label('Public code')
                         ->disabled()
-                        ->dehydrated(false) // niet opslaan vanuit form
+                        ->dehydrated(false)
                         ->helperText('Generated automatically.'),
 
                     DatePicker::make('date')
@@ -28,7 +29,7 @@ class ReservationForm
                         ->required()
                         ->native(false),
 
-                    Select::make('time_slot_id') // PAS DIT AAN als jouw FK anders heet
+                    Select::make('time_slot_id')
                     ->label('Timeslot')
                         ->relationship(
                             name: 'timeSlot',
@@ -38,12 +39,23 @@ class ReservationForm
                         ->required()
                         ->searchable()
                         ->preload(),
+
+                    Select::make('status')
+                        ->label('Status')
+                        ->options([
+                            'active' => 'Active',
+                            'cancelled' => 'Cancelled',
+                        ])
+                        ->required()
+                        ->default(fn ($record) => $record?->status ?? 'confirmed'),
+
                 ]),
 
             Section::make('Visitors')
+                ->disabled(fn ($record) => $record?->status === 'cancelled')
                 ->schema([
                     Repeater::make('visitors')
-                        ->relationship() // gebruikt Reservation->visitors()
+                        ->relationship()
                         ->minItems(1)
                         ->maxItems(3)
                         ->defaultItems(1)

@@ -54,9 +54,8 @@ class ReservationsTimeSeries extends ChartWidget
     }
     protected function getData(): array
     {
-        // Kies je range (bv. laatste 31 dagen)
-        $from = $this->from ?? now()->subDays(30)->toDateString();
-        $to   = $this->to   ?? now()->toDateString();
+        $from = $this->from ?? now()->subDays(5)->toDateString();
+        $to   = $this->to   ?? now()->addDays(31)->toDateString();
 
         $rows = DB::select(
             "
@@ -73,6 +72,7 @@ class ReservationsTimeSeries extends ChartWidget
             FROM dates d
             LEFT JOIN reservations r
               ON r.date = d.day
+              AND r.status = 'confirmed'
             LEFT JOIN visitors v
               ON v.reservation_id = r.id
             GROUP BY d.day
