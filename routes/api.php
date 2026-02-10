@@ -20,9 +20,11 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
 
     Route::get('/available-dates', [AvailableDatesController::class, 'index']);
 
-    Route::post('/reservations', [ReservationController::class, 'store']);
+    Route::post('/reservations', [ReservationController::class, 'store'])
+        ->middleware('throttle:reservations');
 
     Route::get('/reservations/{public_code}', [ReservationController::class, 'show']);
 
-    Route::post('/reservations/{public_code}/cancel', [ReservationController::class, 'cancel']);
+    Route::post('/reservations/{public_code}/cancel', [ReservationController::class, 'cancel'])
+        ->middleware('throttle:cancel');
 });

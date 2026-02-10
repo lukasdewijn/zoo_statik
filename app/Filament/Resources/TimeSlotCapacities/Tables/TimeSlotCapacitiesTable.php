@@ -45,7 +45,10 @@ class TimeSlotCapacitiesTable
                 // Inline edit
                 TextInputColumn::make('capacity')
                     ->type('number')
-                    ->rules(['integer', 'min:0'])
+                    ->rules(fn ($record) => [
+                        'integer',
+                        'min:' . (int) ($record->reserved_count ?? 0),
+                    ])
                     ->sortable(),
 
                 TextColumn::make('reserved_count')

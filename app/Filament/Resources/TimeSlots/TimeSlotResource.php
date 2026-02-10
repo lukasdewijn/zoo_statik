@@ -5,11 +5,10 @@ namespace App\Filament\Resources\TimeSlots;
 use App\Filament\Resources\TimeSlots\Pages\CreateTimeSlot;
 use App\Filament\Resources\TimeSlots\Pages\EditTimeSlot;
 use App\Filament\Resources\TimeSlots\Pages\ListTimeSlots;
+use App\Filament\Resources\TimeSlots\Schemas\TimeSlotForm;
 use App\Filament\Resources\TimeSlots\Tables\TimeSlotsTable;
 use App\Models\TimeSlot;
 use BackedEnum;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -23,16 +22,7 @@ class TimeSlotResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->schema([
-            TextInput::make('start_time')
-                ->required()
-                ->rule('regex:/^\d{2}:\d{2}$/'),
-            TextInput::make('end_time')
-                ->required()
-                ->rule('regex:/^\d{2}:\d{2}$/'),
-            Toggle::make('recurring')
-                ->default(true),
-        ]);
+        return TimeSlotForm::configure($schema);
     }
 
     public static function table(Table $table): Table

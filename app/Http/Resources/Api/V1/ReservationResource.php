@@ -24,9 +24,9 @@ class ReservationResource extends JsonResource
                 'end_time' => $this->timeSlot->end_time,
             ],
             'visitors' => $this->visitors->map(fn ($v) => [
-                'first_name' => $v->firstname,
-                'last_name' => $v->lastname,
-                'subscription_number' => $v->subscription_nr,
+                'first_name' => $v->first_name,
+                'last_name' => $v->last_name,
+                'subscription_number' => $v->subscription_number,
             ])->values(),
             'created_at' => $this->created_at?->toISOString(),
         ];

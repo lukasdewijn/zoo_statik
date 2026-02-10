@@ -50,9 +50,9 @@
                                         {{ $loop->iteration }}
                                     </div>
                                     <div class="min-w-0">
-                                        <p class="font-semibold text-gray-900 text-sm truncate">{{ $v->firstname }} {{ $v->lastname }}</p>
-                                        @if($v->subscription_nr)
-                                            <p class="text-xs text-gray-500">{{ __('zoo.subscription_nr') }}: {{ $v->subscription_nr }}</p>
+                                        <p class="font-semibold text-gray-900 text-sm truncate">{{ $v->first_name }} {{ $v->last_name }}</p>
+                                        @if($v->subscription_number)
+                                            <p class="text-xs text-gray-500">{{ __('zoo.subscription_nr') }}: {{ $v->subscription_number }}</p>
                                         @endif
                                     </div>
                                 </div>

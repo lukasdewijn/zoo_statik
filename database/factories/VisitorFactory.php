@@ -14,9 +14,9 @@ class VisitorFactory extends Factory
     {
         return [
             'reservation_id' => Reservation::factory(),
-            'firstname' => fake()->firstName(),
-            'lastname' => fake()->lastName(),
-            'subscription_nr' => null,
+            'first_name' => fake()->firstName(),
+            'last_name' => fake()->lastName(),
+            'subscription_number' => null,
         ];
     }
 }

@@ -25,13 +25,15 @@ class AvailabilityController extends Controller
             ->whereDate('date', $date)
             ->get();
 
-        // For each timeslot, calculate how many spots are used (confirmed visitors)
-        // and how many are still available.
+        // Batch-load all reserved counts for this date in a single query,
+        // instead of querying per timeslot (N+1 prevention).
+        $reservedCounts = TimeSlotCapacity::reservedCountsByDate($date);
+
         $data = $capacities
             ->sortBy(fn ($cap) => $cap->timeSlot?->start_time)
             ->values()
-            ->map(function ($cap) use ($date) {
-                $used = TimeSlotCapacity::reservedCount($date, $cap->time_slot_id);
+            ->map(function ($cap) use ($reservedCounts) {
+                $used = (int) ($reservedCounts[$cap->time_slot_id] ?? 0);
                 $capacity = (int) $cap->capacity;
                 $available = max(0, $capacity - $used);
 

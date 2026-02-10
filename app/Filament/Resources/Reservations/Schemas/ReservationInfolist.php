@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Reservations\Schemas;
 
+use App\Enums\ReservationStatus;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
@@ -30,6 +31,15 @@ class ReservationInfolist
                     TextEntry::make('visitors_count')
                         ->label('# Visitors')
                         ->numeric(),
+
+                    TextEntry::make('status')
+                        ->label('Status')
+                        ->badge()
+                        ->color(fn (ReservationStatus $state) => match ($state) {
+                            ReservationStatus::Cancelled => 'danger',
+                            ReservationStatus::Confirmed => 'success',
+                            ReservationStatus::Completed => 'info',
+                        }),
                 ]),
             Section::make('Visitors')
                 ->schema([
@@ -37,11 +47,11 @@ class ReservationInfolist
                         ->label(false)
                         ->columns(3)
                         ->schema([
-                            TextEntry::make('firstname')
+                            TextEntry::make('first_name')
                                 ->label('First Name'),
-                            TextEntry::make('lastname')
+                            TextEntry::make('last_name')
                                 ->label('Last Name'),
-                            TextEntry::make('subscription_nr')
+                            TextEntry::make('subscription_number')
                                 ->label('Subscription #')
                                 ->placeholder('–')
                                 ->badge(),

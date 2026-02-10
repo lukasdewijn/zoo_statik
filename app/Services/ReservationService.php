@@ -58,17 +58,27 @@ class ReservationService
                 ->lockForUpdate()
                 ->first();
 
-            // If no capacity row exists yet (e.g. the generate command hasn't run),
-            // create one with the default capacity and then lock it.
+            // If no capacity row exists yet, create one and lock it.
+            // The try-catch handles the rare race condition where two requests
+            // both pass the check and try to create simultaneously.
             if (! $capRow) {
-                $capRow = TimeSlotCapacity::create([
-                    'date' => $date,
-                    'time_slot_id' => $timeslotId,
-                    'capacity' => TimeSlotCapacity::DEFAULT_CAPACITY,
-                ]);
+                try {
+                    $capRow = TimeSlotCapacity::create([
+                        'date' => $date,
+                        'time_slot_id' => $timeslotId,
+                        'capacity' => TimeSlotCapacity::DEFAULT_CAPACITY,
+                    ]);
+                } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+                    $capRow = TimeSlotCapacity::query()
+                        ->whereDate('date', $date)
+                        ->where('time_slot_id', $timeslotId)
+                        ->first();
+                }
 
-                $capRow->refresh();
-                TimeSlotCapacity::query()->whereKey($capRow->id)->lockForUpdate()->first();
+                $capRow = TimeSlotCapacity::query()
+                    ->whereKey($capRow->id)
+                    ->lockForUpdate()
+                    ->first();
             }
 
             $capacity = (int) $capRow->capacity;
@@ -93,9 +103,9 @@ class ReservationService
             foreach ($visitors as $v) {
                 Visitor::create([
                     'reservation_id' => $reservation->id,
-                    'firstname' => $v['first_name'],
-                    'lastname' => $v['last_name'],
-                    'subscription_nr' => $v['subscription_number'] ?? null,
+                    'first_name' => $v['first_name'],
+                    'last_name' => $v['last_name'],
+                    'subscription_number' => $v['subscription_number'] ?? null,
                 ]);
             }
 

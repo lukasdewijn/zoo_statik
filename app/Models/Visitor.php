@@ -10,9 +10,9 @@ class Visitor extends Model
     use HasFactory;
     protected $fillable = [
         'reservation_id',
-        'firstname',
-        'lastname',
-        'subscription_nr',
+        'first_name',
+        'last_name',
+        'subscription_number',
     ];
 
     public function reservation()

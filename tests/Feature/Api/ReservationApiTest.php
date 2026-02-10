@@ -60,8 +60,8 @@ test('can create a reservation', function () {
     ]);
 
     $this->assertDatabaseHas('visitors', [
-        'firstname' => 'Jan',
-        'lastname' => 'Janssen',
+        'first_name' => 'Jan',
+        'last_name' => 'Janssen',
     ]);
 });
 
@@ -245,8 +245,8 @@ test('can retrieve a reservation by public_code', function () {
     ]);
     Visitor::factory()->create([
         'reservation_id' => $reservation->id,
-        'firstname' => 'Test',
-        'lastname' => 'User',
+        'first_name' => 'Test',
+        'last_name' => 'User',
     ]);
 
     $this->getJson("/api/v1/reservations/{$reservation->public_code}")
@@ -272,7 +272,7 @@ test('can cancel a reservation with correct email', function () {
     $this->postJson("/api/v1/reservations/{$reservation->public_code}/cancel", [
         'contact_email' => 'test@example.com',
     ])->assertOk()
-        ->assertJsonPath('message', 'Reservatie geannuleerd.');
+        ->assertJsonPath('data.status', 'cancelled');
 
     $this->assertDatabaseHas('reservations', [
         'id' => $reservation->id,

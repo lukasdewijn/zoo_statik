@@ -24,12 +24,12 @@ class ReservationReminder extends Notification
     public function toMail($notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Herinnering: je bezoek aan de Zoo is morgen!')
-            ->greeting('Hey!')
-            ->line('Dit is een vriendelijke herinnering dat je morgen een bezoek gepland hebt aan de Zoo.')
-            ->line("Reservatiecode: {$this->reservation->public_code}")
-            ->line("Datum: {$this->reservation->date->format('d/m/Y')}")
-            ->line("Tijdslot: {$this->reservation->timeSlot->label}")
-            ->line('Tot morgen!');
+            ->subject(__('zoo.notifications.reminder.subject'))
+            ->greeting(__('zoo.notifications.reminder.greeting'))
+            ->line(__('zoo.notifications.reminder.body'))
+            ->line(__('zoo.notifications.reminder.reservation_code', ['code' => $this->reservation->public_code]))
+            ->line(__('zoo.notifications.reminder.date', ['date' => $this->reservation->date->format('d/m/Y')]))
+            ->line(__('zoo.notifications.reminder.timeslot', ['timeslot' => $this->reservation->timeSlot->label]))
+            ->line(__('zoo.notifications.reminder.goodbye'));
     }
 }

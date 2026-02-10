@@ -33,13 +33,13 @@ class ReservationConfirmed extends Notification
         );
 
         return (new MailMessage)
-            ->subject('Bevestiging van je reservatie')
-            ->greeting('Hey!')
-            ->line('Je reservatie is bevestigd.')
-            ->line("Reservatiecode: {$this->reservation->public_code}")
-            ->line("Datum: {$this->reservation->date->format('d/m/Y')}")
-            ->line("Tijdslot: {$this->reservation->timeSlot->label}")
-            ->action('Annuleer via deze link', $cancelUrl)
-            ->line('Deze annuleerlink is tijdelijk geldig.');
+            ->subject(__('zoo.notifications.confirmed.subject'))
+            ->greeting(__('zoo.notifications.confirmed.greeting'))
+            ->line(__('zoo.notifications.confirmed.body'))
+            ->line(__('zoo.notifications.confirmed.reservation_code', ['code' => $this->reservation->public_code]))
+            ->line(__('zoo.notifications.confirmed.date', ['date' => $this->reservation->date->format('d/m/Y')]))
+            ->line(__('zoo.notifications.confirmed.timeslot', ['timeslot' => $this->reservation->timeSlot->label]))
+            ->action(__('zoo.notifications.confirmed.cancel_action'), $cancelUrl)
+            ->line(__('zoo.notifications.confirmed.cancel_notice'));
     }
 }

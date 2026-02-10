@@ -67,14 +67,14 @@ class ReservationsTable
                 ViewAction::make(),
 
                 EditAction::make()
-                    ->disabled(fn ($record) => $record->status === ReservationStatus::Cancelled),
+                    ->visible(fn ($record) => $record->status === ReservationStatus::Confirmed),
 
                 Action::make('cancel')
                     ->label('Cancel')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->visible(fn ($record) => $record->status !== ReservationStatus::Cancelled)
+                    ->visible(fn ($record) => $record->status === ReservationStatus::Confirmed)
                     ->action(fn ($record) => $record->update(['status' => ReservationStatus::Cancelled, 'cancelled_at' => now()])),
             ])
             ->toolbarActions([

@@ -31,6 +31,14 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
+
+        RateLimiter::for('reservations', function (Request $request) {
+            return Limit::perMinute(10)->by($request->ip());
+        });
+
+        RateLimiter::for('cancel', function (Request $request) {
+            return Limit::perMinute(5)->by($request->ip());
+        });
     }
 
     protected function configureDefaults(): void

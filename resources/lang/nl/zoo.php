@@ -39,6 +39,38 @@ return [
         'confirmation_sent' => '📧 We hebben een bevestigingsmail gestuurd naar :email. Controleer ook je spamfolder.',
     ],
 
+    'notifications' => [
+        'confirmed' => [
+            'subject' => 'Bevestiging van je reservatie',
+            'greeting' => 'Hey!',
+            'body' => 'Je reservatie is bevestigd.',
+            'reservation_code' => 'Reservatiecode: :code',
+            'date' => 'Datum: :date',
+            'timeslot' => 'Tijdslot: :timeslot',
+            'cancel_action' => 'Annuleer via deze link',
+            'cancel_notice' => 'Deze annuleerlink is tijdelijk geldig.',
+        ],
+        'reminder' => [
+            'subject' => 'Herinnering: je bezoek aan de Zoo is morgen!',
+            'greeting' => 'Hey!',
+            'body' => 'Dit is een vriendelijke herinnering dat je morgen een bezoek gepland hebt aan de Zoo.',
+            'reservation_code' => 'Reservatiecode: :code',
+            'date' => 'Datum: :date',
+            'timeslot' => 'Tijdslot: :timeslot',
+            'goodbye' => 'Tot morgen!',
+        ],
+        'cancelled_by_admin' => [
+            'subject' => 'Je reservatie is geannuleerd',
+            'greeting' => 'Hey!',
+            'body' => 'Het spijt ons, maar je reservatie is geannuleerd door de beheerder.',
+            'reservation_code' => 'Reservatiecode: :code',
+            'date' => 'Datum: :date',
+            'timeslot' => 'Tijdslot: :timeslot',
+            'new_reservation' => 'Boek een nieuwe reservatie',
+            'apology' => 'Onze excuses voor het ongemak.',
+        ],
+    ],
+
     'email' => 'Email',
     'firstname' => 'Voornaam',
     'lastname' => 'Achternaam',

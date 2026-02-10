@@ -7,6 +7,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 class TimeSlotCapacityForm
@@ -16,7 +17,8 @@ class TimeSlotCapacityForm
         return $schema
             ->components([
                 DatePicker::make('date')
-                    ->required(),
+                    ->required()
+                    ->reactive(),
                 Select::make('time_slot_id')
                     ->label('Timeslot')
                     ->relationship(
@@ -27,6 +29,7 @@ class TimeSlotCapacityForm
                     ->required()
                     ->searchable()
                     ->preload()
+                    ->reactive()
                     ->createOptionForm([
                         TextInput::make('start_time')->required()->rule('regex:/^\d{2}:\d{2}$/'),
                         TextInput::make('end_time')->required()->rule('regex:/^\d{2}:\d{2}$/'),
@@ -35,7 +38,29 @@ class TimeSlotCapacityForm
                 TextInput::make('capacity')
                     ->required()
                     ->numeric()
-                    ->default(TimeSlotCapacity::DEFAULT_CAPACITY),
+                    ->default(TimeSlotCapacity::DEFAULT_CAPACITY)
+                    ->minValue(function (Get $get): int {
+                        $date = $get('date');
+                        $slotId = $get('time_slot_id');
+
+                        if (! $date || ! $slotId) {
+                            return 0;
+                        }
+
+                        return TimeSlotCapacity::reservedCount($date, $slotId);
+                    })
+                    ->helperText(function (Get $get): ?string {
+                        $date = $get('date');
+                        $slotId = $get('time_slot_id');
+
+                        if (! $date || ! $slotId) {
+                            return null;
+                        }
+
+                        $reserved = TimeSlotCapacity::reservedCount($date, $slotId);
+
+                        return "Currently {$reserved} visitors reserved.";
+                    }),
             ]);
     }
 }

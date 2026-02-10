@@ -19,21 +19,20 @@ class DateHasAvailability implements ValidationRule
 
         $dateStr = $date->toDateString();
 
-        // Check if at least one timeslot has remaining capacity on this date
-        $hasAvailability = false;
-
+        // Batch-load all reserved counts for this date in a single query,
+        // then check if at least one timeslot has remaining capacity.
         $capacities = TimeSlotCapacity::query()
             ->whereDate('date', $dateStr)
             ->select('time_slot_id', 'capacity')
             ->get();
 
-        foreach ($capacities as $cap) {
-            $reserved = TimeSlotCapacity::reservedCount($dateStr, $cap->time_slot_id);
-            if ($cap->capacity - $reserved > 0) {
-                $hasAvailability = true;
-                break;
-            }
-        }
+        $reservedCounts = TimeSlotCapacity::reservedCountsByDate($dateStr);
+
+        $hasAvailability = $capacities->contains(function ($cap) use ($reservedCounts) {
+            $reserved = (int) ($reservedCounts[$cap->time_slot_id] ?? 0);
+
+            return $cap->capacity - $reserved > 0;
+        });
 
         if (! $hasAvailability) {
             $fail(__('zoo.form.errors.no_availability'));

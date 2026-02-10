@@ -86,17 +86,17 @@ class ReservationForm
                             return max(1, TimeSlotCapacity::remainingCapacity($date, $slotId));
                         })
                         ->schema([
-                            TextInput::make('firstname')
+                            TextInput::make('first_name')
                                 ->label('First name')
                                 ->required()
                                 ->maxLength(255),
 
-                            TextInput::make('lastname')
+                            TextInput::make('last_name')
                                 ->label('Last name')
                                 ->required()
                                 ->maxLength(255),
 
-                            TextInput::make('subscription_nr')
+                            TextInput::make('subscription_number')
                                 ->label('Subscription #')
                                 ->placeholder('Optional')
                                 ->maxLength(50)

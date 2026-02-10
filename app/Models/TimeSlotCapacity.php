@@ -78,6 +78,21 @@ class TimeSlotCapacity extends Model
             ->count();
     }
 
+    /**
+     * Return reserved visitor counts for all timeslots on a given date, keyed by time_slot_id.
+     */
+    public static function reservedCountsByDate(string $date): \Illuminate\Support\Collection
+    {
+        return DB::table('reservations')
+            ->join('visitors', 'visitors.reservation_id', '=', 'reservations.id')
+            ->where('reservations.status', ReservationStatus::Confirmed)
+            ->whereDate('reservations.date', $date)
+            ->groupBy('reservations.time_slot_id')
+            ->select('reservations.time_slot_id', DB::raw('COUNT(visitors.id) as reserved_count'))
+            ->get()
+            ->pluck('reserved_count', 'time_slot_id');
+    }
+
     public static function remainingCapacity(string $date, int $timeSlotId): int
     {
         return max(0, self::capacityFor($date, $timeSlotId) - self::reservedCount($date, $timeSlotId));

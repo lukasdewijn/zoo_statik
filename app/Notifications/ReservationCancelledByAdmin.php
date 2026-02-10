@@ -24,13 +24,13 @@ class ReservationCancelledByAdmin extends Notification
     public function toMail($notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Je reservatie is geannuleerd')
-            ->greeting('Hey!')
-            ->line('Het spijt ons, maar je reservatie is geannuleerd door de beheerder.')
-            ->line("Reservatiecode: {$this->reservation->public_code}")
-            ->line("Datum: {$this->reservation->date->format('d/m/Y')}")
-            ->line("Tijdslot: {$this->reservation->timeSlot->label} ({$this->reservation->timeSlot->start_time} - {$this->reservation->timeSlot->end_time})")
-            ->action('Boek een nieuwe reservatie', url('/reservation'))
-            ->line('Onze excuses voor het ongemak.');
+            ->subject(__('zoo.notifications.cancelled_by_admin.subject'))
+            ->greeting(__('zoo.notifications.cancelled_by_admin.greeting'))
+            ->line(__('zoo.notifications.cancelled_by_admin.body'))
+            ->line(__('zoo.notifications.cancelled_by_admin.reservation_code', ['code' => $this->reservation->public_code]))
+            ->line(__('zoo.notifications.cancelled_by_admin.date', ['date' => $this->reservation->date->format('d/m/Y')]))
+            ->line(__('zoo.notifications.cancelled_by_admin.timeslot', ['timeslot' => $this->reservation->timeSlot->label]))
+            ->action(__('zoo.notifications.cancelled_by_admin.new_reservation'), url('/reservation'))
+            ->line(__('zoo.notifications.cancelled_by_admin.apology'));
     }
 }
