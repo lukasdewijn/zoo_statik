@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Reservation;
+use Illuminate\Support\Facades\Http;
 
 class ReservationSuccessController extends Controller
 {
@@ -13,6 +14,31 @@ class ReservationSuccessController extends Controller
             ->with(['timeSlot', 'visitors'])
             ->firstOrFail();
 
-        return view('reservations.success', compact('reservation'));
+        $capybara = $this->loadCapybaraOfTheDay();
+
+        return view('reservations.success', compact('reservation', 'capybara'));
+    }
+
+    private function loadCapybaraOfTheDay(): ?array
+    {
+        try {
+            $imageResponse = Http::timeout(3)->get('https://api.capy.lol/v1/capyoftheday?json=true');
+            $factResponse = Http::timeout(3)->get('https://api.capy.lol/v1/fact');
+
+            $capybara = [];
+
+            if ($imageResponse->successful()) {
+                $capybara['url'] = $imageResponse->json('data.url');
+                $capybara['alt'] = $imageResponse->json('data.alt') ?? 'Capybara of the day';
+            }
+
+            if ($factResponse->successful()) {
+                $capybara['fact'] = $factResponse->json('data.fact');
+            }
+
+            return $capybara ?: null;
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 }

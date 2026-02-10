@@ -1,7 +1,7 @@
 <?php
 
-test('returns a successful response', function () {
+test('homepage redirects to reservation page', function () {
     $response = $this->get('/');
 
-    $response->assertOk();
+    $response->assertRedirect('/reservation');
 });

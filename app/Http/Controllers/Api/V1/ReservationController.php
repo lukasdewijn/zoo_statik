@@ -2,101 +2,43 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\ReservationStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\Api\V1\ReservationResource;
 use App\Models\Reservation;
-use App\Models\TimeSlot;
+use App\Rules\DateHasAvailability;
 use App\Rules\SubscriptionNumber;
-use Carbon\Carbon;
+use App\Services\ReservationService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Notification;
-use App\Notifications\ReservationConfirmed;
-
+use Illuminate\Validation\ValidationException;
 
 class ReservationController extends Controller
 {
-    public function store(Request $request)
+    public function store(Request $request, ReservationService $service)
     {
         $validated = $request->validate([
-            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
-            'timeslot_id' => ['required', 'exists:time_slots,id'],
-            'visitors' => ['required', 'array', 'min:1', 'max:10'],
-
-            'visitors.*.first_name' => ['required', 'string'],
-            'visitors.*.last_name' => ['required', 'string'],
-            'visitors.*.subscription_number' => ['nullable', new SubscriptionNumber()],
+            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today', new DateHasAvailability],
+            'time_slot_id' => ['required', 'exists:time_slots,id'],
+            'visitors' => ['required', 'array', 'min:1', 'max:200'],
+            'visitors.*.first_name' => ['required', 'string', 'max:255'],
+            'visitors.*.last_name' => ['required', 'string', 'max:255'],
+            'visitors.*.subscription_number' => ['nullable', new SubscriptionNumber],
             'contact_email' => ['required', 'email'],
         ]);
 
-
-        $date = $validated['date'];
-        $timeslotId = (int)$validated['timeslot_id'];
-
-        // 1) Check: timeslot niet “in het verleden” als date = vandaag
-        $slot = TimeSlot::query()->findOrFail($timeslotId);
-
-        if ($date === now()->toDateString()) {
-            // Maak een datetime van vandaag + end_time (bv "12:00")
-            $end = Carbon::parse($date . ' ' . $slot->end_time);
-
-            if (now()->greaterThanOrEqualTo($end)) {
-                return response()->json([
-                    'message' => 'This timeslot has already ended for today.',
-                    'errors' => [
-                        'timeslot_id' => ['Timeslot is no longer bookable today.'],
-                    ],
-                ], 422);
-            }
+        try {
+            $reservation = $service->create($validated);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation error.',
+                'errors' => $e->errors(),
+            ], 422);
         }
 
-        // Opslaan in de DB (reservation + visitors) in één transactie
-        $reservation = DB::transaction(function () use ($date, $timeslotId, $validated) {
-            $reservation = Reservation::create([
-                'date' => $date,
-                'timeslot_id' => $timeslotId,
-                // public_code wordt automatisch gezet in booted()
-            ]);
-
-            $reservation->visitors()->createMany(
-                collect($validated['visitors'])->map(fn($v) => [
-                    'first_name' => $v['first_name'],
-                    'last_name' => $v['last_name'],
-                    'subscription_nr' => filled($v['subscription_number'] ?? null)
-                        ? $v['subscription_number']
-                        : null,
-                ])->all()
-            );
-
-            Notification::route('mail', $reservation->contact_email)
-                ->notify(new ReservationConfirmed($reservation));
-
-
-            return $reservation->load(['timeSlot', 'visitors']);
-        });
-
-        // Response (201 created)
-        return response()->json([
-            'data' => [
-                'id' => $reservation->id,
-                'public_code' => $reservation->public_code,
-                'date' => $reservation->date->toDateString(),
-                'timeslot' => [
-                    'id' => $reservation->timeSlot->id,
-                    'label' => $reservation->timeSlot->label,
-                    'start_time' => $reservation->timeSlot->start_time,
-                    'end_time' => $reservation->timeSlot->end_time,
-                ],
-                'visitors' => $reservation->visitors->map(fn($v) => [
-                    'id' => $v->id,
-                    'first_name' => $v->first_name,
-                    'last_name' => $v->last_name,
-                    'subscription_number' => $v->subscription_nr,
-                ])->values(),
-                'created_at' => $reservation->created_at?->toISOString(),
-            ]
-        ], 201);
-
+        return (new ReservationResource($reservation))
+            ->response()
+            ->setStatusCode(201);
     }
 
     public function show(string $public_code)
@@ -104,32 +46,38 @@ class ReservationController extends Controller
         $reservation = Reservation::query()
             ->where('public_code', $public_code)
             ->with(['timeSlot', 'visitors'])
-            ->first();
+            ->firstOrFail();
 
-        if (!$reservation) {
+        return new ReservationResource($reservation);
+    }
+
+    public function cancel(Request $request, string $public_code): JsonResponse
+    {
+        $request->validate([
+            'contact_email' => ['required', 'email'],
+        ]);
+
+        $reservation = Reservation::where('public_code', $public_code)->firstOrFail();
+
+        if ($reservation->contact_email !== $request->input('contact_email')) {
             return response()->json([
-                'message' => 'Reservation not found.',
-            ], 404);
+                'message' => 'Het opgegeven e-mailadres komt niet overeen.',
+            ], 403);
         }
 
-        return response()->json([
-            'data' => [
-                'public_code' => $reservation->public_code,
-                'date' => $reservation->date->toDateString(),
-                'timeslot' => [
-                    'id' => $reservation->timeSlot->id,
-                    'label' => $reservation->timeSlot->label,
-                    'start_time' => $reservation->timeSlot->start_time,
-                    'end_time' => $reservation->timeSlot->end_time,
-                ],
-                'visitors' => $reservation->visitors->map(fn($v) => [
-                    'first_name' => $v->first_name,
-                    'last_name' => $v->last_name,
-                    'subscription_number' => $v->subscription_nr,
-                ])->values(),
-                'created_at' => $reservation->created_at?->toISOString(),
-            ],
-        ], 200);
+        if ($reservation->status === ReservationStatus::Cancelled) {
+            return response()->json([
+                'message' => 'Deze reservatie is al geannuleerd.',
+            ], 409);
+        }
 
+        $reservation->update([
+            'status' => ReservationStatus::Cancelled,
+            'cancelled_at' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'Reservatie geannuleerd.',
+        ]);
     }
 }

@@ -14,27 +14,28 @@ class SubscriptionNumber implements ValidationRule
      */
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        //optional
-        if($value === null || $value === '') {
+        // optional
+        if ($value === null || $value === '') {
             return;
         }
 
-        // enkel cijfers overhouden
+        // Strip non-digit characters
         $digits = preg_replace('/\D+/', '', (string) $value);
 
-        // exact 10 cijfers
-        if(strlen($digits) !== 10) {
-            $fail("The :attribute must be 10 digits.");
+        // Must be exactly 10 digits
+        if (strlen($digits) !== 10) {
+            $fail('The subscription number must be 10 digits.');
+
             return;
         }
 
-        $base = substr($digits, 0, 8); // eerste 8
-        $check = substr($digits, 8, 2); // laatste 2
+        $base = substr($digits, 0, 8);  // first 8
+        $check = substr($digits, 8, 2); // last 2
 
         $mod = ((int) $base) % 97;
 
-        if((int) $check !== $mod){
-            $fail('The :attribute checksum is invalid.');
+        if ((int) $check !== $mod) {
+            $fail('The subscription number checksum is invalid.');
         }
     }
 }

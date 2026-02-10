@@ -2,14 +2,16 @@
 
 namespace App\Filament\Resources\TimeSlotCapacities\Tables;
 
+use App\Enums\ReservationStatus;
 use App\Models\Reservation;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Forms\Components\DatePicker;
+use App\Filament\Filters\DateRangeFilter;
+use App\Models\TimeSlot;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
-use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -18,6 +20,7 @@ class TimeSlotCapacitiesTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->defaultSort('date', 'asc')
             ->modifyQueryUsing(function (Builder $query) {
                 $query->select('time_slot_capacities.*')
                     ->selectSub(
@@ -25,9 +28,9 @@ class TimeSlotCapacitiesTable
                             ->from('reservations')
                             ->join('visitors', 'visitors.reservation_id', '=', 'reservations.id')
                             ->selectRaw('COUNT(visitors.id)')
-                            ->whereColumn('reservations.timeslot_id', 'time_slot_capacities.time_slot_id')
+                            ->whereColumn('reservations.time_slot_id', 'time_slot_capacities.time_slot_id')
                             ->whereColumn('reservations.date', 'time_slot_capacities.date')
-                            ->where('reservations.status', 'confirmed'),
+                            ->where('reservations.status', ReservationStatus::Confirmed),
                         'reserved_count'
                     );
             })
@@ -36,15 +39,10 @@ class TimeSlotCapacitiesTable
                     ->date()
                     ->sortable(),
 
-                TextColumn::make('timeSlot.start_time')
-                    ->label('Start')
-                    ->sortable(),
+                TextColumn::make('timeSlot.label')
+                    ->label('Tijdslot'),
 
-                TextColumn::make('timeSlot.end_time')
-                    ->label('End')
-                    ->sortable(),
-
-                // handig: inline edit
+                // Inline edit
                 TextInputColumn::make('capacity')
                     ->type('number')
                     ->rules(['integer', 'min:0'])
@@ -59,20 +57,15 @@ class TimeSlotCapacitiesTable
                     ->label('Left')
                     ->state(function ($record) {
                         $reserved = (int) ($record->reserved_count ?? 0);
+
                         return max(0, (int) $record->capacity - $reserved);
                     }),
             ])
             ->filters([
-                Filter::make('date')
-                    ->form([
-                        DatePicker::make('date'),
-                    ])
-                    ->query(function (Builder $query, array $data) {
-                        return $query->when(
-                            $data['date'] ?? null,
-                            fn (Builder $q, $date) => $q->whereDate('date', $date)
-                        );
-                    }),
+                DateRangeFilter::make('time_slot_capacities.date'),
+                SelectFilter::make('time_slot_id')
+                    ->label('Tijdslot')
+                    ->options(fn () => TimeSlot::all()->pluck('label', 'id')),
             ])
             ->recordActions([
                 EditAction::make(),

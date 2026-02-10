@@ -3,51 +3,35 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\AvailabilityRequest;
 use App\Models\TimeSlotCapacity;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
 
 class AvailabilityController extends Controller
 {
-    public function index(Request $request)
+    /**
+     * Return the availability for each active timeslot on a given date.
+     *
+     * Responds with capacity, used spots, available spots and a full flag
+     * per timeslot, sorted by start time. Defaults to today when no date
+     * is provided.
+     */
+    public function index(AvailabilityRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'date' => ['nullable', 'date_format:Y-m-d'],
-        ]);
+        $date = $request->validated()['date'] ?? now()->toDateString();
 
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Validation failed',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $date = $validator->validated()['date'] ?? now()->toDateString();
-
-        // 1) haal capacities van die dag op + timeslot label
+        // Fetch capacity rows for the requested date, only including active timeslots.
         $capacities = TimeSlotCapacity::query()
-            ->with(['timeSlot:id,label,start_time,end_time,active'])
+            ->with(['timeSlot:id,start_time,end_time,recurring'])
             ->whereDate('date', $date)
-            ->whereHas('timeSlot', fn ($q) => $q->where('active', 1))
             ->get();
 
-        $capacityIds = $capacities->pluck('id');
-
-        // 2) tel gebruikte plekken (aantal visitors) per time_slot_capacity_id in 1 query
-        // used = aantal bezoekers (visitors) gekoppeld aan reservations in dat slot
-        $usedByCapacityId = DB::table('reservations')
-            ->join('visitors', 'visitors.reservation_id', '=', 'reservations.id')
-            ->whereIn('reservations.time_slot_capacity_id', $capacityIds)
-            ->groupBy('reservations.time_slot_capacity_id')
-            ->selectRaw('reservations.time_slot_capacity_id as id, COUNT(*) as used')
-            ->pluck('used', 'id');
-
+        // For each timeslot, calculate how many spots are used (confirmed visitors)
+        // and how many are still available.
         $data = $capacities
             ->sortBy(fn ($cap) => $cap->timeSlot?->start_time)
             ->values()
-            ->map(function ($cap) use ($usedByCapacityId) {
-                $used = (int) ($usedByCapacityId[$cap->id] ?? 0);
+            ->map(function ($cap) use ($date) {
+                $used = TimeSlotCapacity::reservedCount($date, $cap->time_slot_id);
                 $capacity = (int) $cap->capacity;
                 $available = max(0, $capacity - $used);
 

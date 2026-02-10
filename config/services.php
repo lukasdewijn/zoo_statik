@@ -19,7 +19,6 @@ return [
         'message_stream_id' => 'zoomail',
     ],
 
-
     'resend' => [
         'key' => env('RESEND_API_KEY'),
     ],

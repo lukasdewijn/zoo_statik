@@ -2,14 +2,16 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use Carbon\Carbon;
 use App\Models\TimeSlot;
+use App\Models\TimeSlotCapacity;
+use Carbon\Carbon;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 class GenerateTimeSlotCapacities extends Command
 {
-    protected $signature = 'timeslots:generate-capacities {--days=360} {--start=}';
+    protected $signature = 'timeslots:generate-capacities {--days=360} {--start=} {--include-weekends}';
+
     protected $description = 'Generate time_slot_capacities for each date and timeslot';
 
     public function handle(): int
@@ -21,9 +23,10 @@ class GenerateTimeSlotCapacities extends Command
 
         $end = (clone $start)->addDays($days - 1);
 
-        $timeSlotIds = TimeSlot::query()->pluck('id');
+        $timeSlotIds = TimeSlot::where('recurring', true)->pluck('id');
         if ($timeSlotIds->isEmpty()) {
             $this->error('No time slots found in time_slots table.');
+
             return self::FAILURE;
         }
 
@@ -31,13 +34,19 @@ class GenerateTimeSlotCapacities extends Command
         $chunkSize = 500;
         $upserted = 0;
 
+        $includeWeekends = $this->option('include-weekends');
+
         for ($date = $start->copy(); $date->lte($end); $date = $date->addDay()) {
+
+            if (! $includeWeekends && $date->isWeekend()) {
+                continue;
+            }
 
             foreach ($timeSlotIds as $id) {
                 $rows[] = [
                     'date' => $date->toDateString(),
                     'time_slot_id' => $id,
-                    'capacity' => 200,
+                    'capacity' => TimeSlotCapacity::DEFAULT_CAPACITY,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
@@ -53,14 +62,14 @@ class GenerateTimeSlotCapacities extends Command
                 }
             }
 
-            // mini progress zodat je ziet dat hij werkt
-            if ((int)$date->diffInDays($start) % 10 === 0) {
-                $this->info('Generated up to ' . $date->toDateString());
+            // Progress indicator
+            if ((int) $date->diffInDays($start) % 10 === 0) {
+                $this->info('Generated up to '.$date->toDateString());
             }
         }
 
-        // laatste restje
-        if (!empty($rows)) {
+        // Remaining rows
+        if (! empty($rows)) {
             DB::table('time_slot_capacities')->upsert(
                 $rows,
                 ['date', 'time_slot_id'],
@@ -70,6 +79,7 @@ class GenerateTimeSlotCapacities extends Command
         }
 
         $this->info("Done. Upserted about {$upserted} rows from {$start->toDateString()} to {$end->toDateString()}.");
+
         return self::SUCCESS;
     }
 }

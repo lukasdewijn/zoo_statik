@@ -7,18 +7,18 @@ return [
         'date' => [
             'label' => 'Datum*',
         ],
-        'timeslot'=>[
+        'timeslot' => [
             'label' => 'Tijd*',
             'placeholder' => 'Kies een tijdslot',
         ],
-        'visitors'=>[
+        'visitors' => [
             'title' => 'Bezoekers',
             'addbutton' => '+ Bezoeker toevoegen',
             'label' => 'Bezoeker',
 
-            ''
+            '',
         ],
-        'places_counter'=>[
+        'places_counter' => [
             'places_left' => 'Nog :count plaatsen over',
             'no_places_left' => 'Dit tijdslot is volzet',
         ],
@@ -26,7 +26,9 @@ return [
 
         'errors' => [
             'timeslot_full' => 'Dit tijdslot is volzet (max :capacity bezoekers).',
-],
+            'weekend' => 'De zoo is gesloten in het weekend.',
+            'no_availability' => 'Er is geen beschikbaarheid op deze datum.',
+        ],
     ],
 
     'success' => [
@@ -34,17 +36,14 @@ return [
         'number_visitors' => 'Bezoekers',
         'new_reservation' => 'Nieuwe reservatie',
 
-        'confirmation_sent' =>
-            '📧 We hebben een bevestigingsmail gestuurd naar :email. Controleer ook je spamfolder.',
+        'confirmation_sent' => '📧 We hebben een bevestigingsmail gestuurd naar :email. Controleer ook je spamfolder.',
     ],
-
-
 
     'email' => 'Email',
     'firstname' => 'Voornaam',
     'lastname' => 'Achternaam',
     'delete' => 'Verwijder',
-    'subscription_nr'=>'Abonnementsnummer',
+    'subscription_nr' => 'Abonnementsnummer',
     'date' => 'Datum',
     'reservation_code' => 'Reserveringscode',
     'visitors' => 'Bezoekers',

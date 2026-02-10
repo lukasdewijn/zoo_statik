@@ -1,11 +1,12 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AvailabilityController;
+use App\Http\Controllers\Api\V1\AvailableDatesController;
 use App\Http\Controllers\Api\V1\ReservationController;
 use App\Http\Controllers\Api\V1\TimeSlotController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('v1')->group(function () {
+Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('/ping', function () {
         return response()->json([
             'ok' => true,
@@ -17,8 +18,11 @@ Route::prefix('v1')->group(function () {
 
     Route::get('/availability', [AvailabilityController::class, 'index']);
 
+    Route::get('/available-dates', [AvailableDatesController::class, 'index']);
+
     Route::post('/reservations', [ReservationController::class, 'store']);
 
     Route::get('/reservations/{public_code}', [ReservationController::class, 'show']);
-});
 
+    Route::post('/reservations/{public_code}/cancel', [ReservationController::class, 'cancel']);
+});

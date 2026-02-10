@@ -19,7 +19,7 @@ class TimeSlotResource extends JsonResource
             'label' => $this->label,
             'start_time' => $this->start_time,
             'end_time' => $this->end_time,
-            'active' => (bool) $this->active,
+            'recurring' => (bool) $this->recurring,
         ];
     }
 }

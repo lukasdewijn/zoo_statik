@@ -1,13 +1,10 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ReservationSuccessController;
 use App\Http\Controllers\ReservationCancelController;
-use Illuminate\Support\Facades\URL;
+use App\Http\Controllers\ReservationSuccessController;
+use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-})->name('home');
+Route::redirect('/', '/reservation');
 
 Route::get('/reservation', function () {
     return view('pages.zoo-reservation');
@@ -25,7 +22,8 @@ Route::get('/reservations/cancel/{public_code}', [ReservationCancelController::c
     ->middleware('signed');
 
 Route::post('/reservations/cancel/{public_code}', [ReservationCancelController::class, 'cancel'])
-    ->name('reservations.cancel.do');
+    ->name('reservations.cancel.do')
+    ->middleware('signed');
 
 Route::get('/reservations/cancelled/{public_code}', [ReservationCancelController::class, 'done'])
     ->name('reservations.cancel.done');

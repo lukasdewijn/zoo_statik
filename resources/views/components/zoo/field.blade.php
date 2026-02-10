@@ -2,16 +2,16 @@
     $type = $type ?? 'text';
 @endphp
 
-<div class="flex flex-col">
-    <label>{{ $label }}</label>
+<div class="space-y-1">
+    <label class="block text-sm font-medium text-gray-600">{{ $label }}</label>
 
     <input
         type="{{ $type }}"
         wire:model="{{ $model }}"
-        class="w-fit border-2 pl-1 border-black rounded-sm"
+        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-green-500 focus:ring-2 focus:ring-green-200 transition"
     >
 
     @error($error)
-    <div class="text-sm text-red-600">{{ $message }}</div>
+        <p class="text-sm text-red-600">{{ $message }}</p>
     @enderror
 </div>

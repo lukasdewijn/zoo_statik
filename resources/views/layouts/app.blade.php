@@ -8,7 +8,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
-<body class="p-6">
+<body class="p-6 min-h-screen bg-gray-50">
 
 @yield('content')
 

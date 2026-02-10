@@ -5,18 +5,18 @@ namespace App\Filament\Resources\TimeSlotCapacities;
 use App\Filament\Resources\TimeSlotCapacities\Pages\CreateTimeSlotCapacity;
 use App\Filament\Resources\TimeSlotCapacities\Pages\EditTimeSlotCapacity;
 use App\Filament\Resources\TimeSlotCapacities\Pages\ListTimeSlotCapacities;
-use App\Filament\Resources\TimeSlotCapacities\Schemas\TimeSlotCapacityForm;
 use App\Filament\Resources\TimeSlotCapacities\Tables\TimeSlotCapacitiesTable;
-use App\Models\TimeSlot;
 use App\Models\TimeSlotCapacity;
 use BackedEnum;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
+
 class TimeSlotCapacityResource extends Resource
 {
     protected static ?string $model = TimeSlotCapacity::class;
@@ -33,10 +33,16 @@ class TimeSlotCapacityResource extends Resource
 
             Select::make('time_slot_id')
                 ->label('Time Slot')
-                ->relationship('timeSlot', 'label', fn ($query) => $query->orderBy('start_time'))
+                ->relationship('timeSlot', 'start_time', fn ($query) => $query->orderBy('start_time'))
+                ->getOptionLabelFromRecordUsing(fn ($record) => $record->label)
                 ->searchable()
                 ->preload()
-                ->required(),
+                ->required()
+                ->createOptionForm([
+                    TextInput::make('start_time')->required()->rule('regex:/^\d{2}:\d{2}$/'),
+                    TextInput::make('end_time')->required()->rule('regex:/^\d{2}:\d{2}$/'),
+                    Toggle::make('recurring')->default(true),
+                ]),
 
             TextInput::make('capacity')
                 ->numeric()
