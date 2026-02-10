@@ -129,17 +129,129 @@ php artisan timeslots:generate-capacities --days=360 --include-weekends
 
 ## Admin Panel (Filament)
 
-Toegankelijk via `/admin` met authenticatie + optionele 2FA.
+Toegankelijk via `/admin` met authenticatie + optionele 2FA. Kleurschema: amber.
 
-### Resources
+### Bestandsstructuur
 
-- **Reservaties** — Overzicht met zoeken, filteren (datumbereik, tijdslot), sorteren. Acties: bekijken, bewerken, annuleren. Toont status als gekleurde badge. Capaciteitsinfo zichtbaar bij bewerken.
-- **Tijdsloten** — CRUD voor tijdvensters met start/eindtijd en recurring-toggle.
-- **Tijdslotcapaciteiten** — Beheer capaciteit per datum/tijdslot. Inline bewerkbaar. Toont gereserveerd aantal en resterende plaatsen.
+```
+app/Filament/
+├── Filters/
+│   └── DateRangeFilter.php            # Herbruikbaar datumbereik-filter (van/tot)
+├── Pages/
+│   └── VisitorsAnalytics.php          # Analytics pagina met lijndiagram
+├── Resources/
+│   ├── Reservations/
+│   │   ├── ReservationResource.php    # Hoofdresource (eager loads timeSlot, counts visitors)
+│   │   ├── Pages/
+│   │   │   ├── ListReservations.php   # Overzichtslijst
+│   │   │   ├── CreateReservation.php  # Aanmaakpagina
+│   │   │   ├── ViewReservation.php    # Detailweergave (read-only infolist)
+│   │   │   └── EditReservation.php    # Bewerkpagina
+│   │   ├── Schemas/
+│   │   │   ├── ReservationForm.php    # Formulier met capaciteitsberekening
+│   │   │   └── ReservationInfolist.php# Read-only weergave met bezoekerlijst
+│   │   └── Tables/
+│   │       └── ReservationsTable.php  # Tabelconfiguratie met annuleeractie
+│   ├── TimeSlots/
+│   │   ├── TimeSlotResource.php       # Hoofdresource
+│   │   ├── Pages/                     # List, Create, Edit
+│   │   ├── Schemas/
+│   │   │   ├── TimeSlotForm.php       # start_time, end_time (HH:MM), recurring toggle
+│   │   │   └── TimeSlotsTable.php     # Tabel met verwijderbeveiliging
+│   │   └── ...
+│   └── TimeSlotCapacities/
+│       ├── TimeSlotCapacityResource.php # Hoofdresource
+│       ├── Pages/                       # List, Create (duplicaatcheck), Edit (duplicaatcheck)
+│       ├── Schemas/
+│       │   ├── TimeSlotCapacityForm.php # datum, tijdslot (inline aanmaak), capaciteit
+│       │   └── TimeSlotCapacitiesTable.php # Tabel met subquery voor reserved_count
+│       └── ...
+└── Widgets/
+    └── ReservationsTimeSeries.php     # Lijndiagram bezoekers/dag (polling 60s)
+```
 
-### Analytics
+### ReservationResource
 
-Pagina `/admin/visitors-analytics` met een lijndiagram (bezoekers per dag) en configureerbaar datumbereik. De grafiek toont ook op het dashboard.
+**Tabel** (`ReservationsTable.php`) — Standaard gesorteerd op datum.
+
+| Kolom | Details |
+|-------|---------|
+| `public_code` | Doorzoekbaar, kopieerbaar, afgekapt tot 8 tekens |
+| `date` | Sorteerbaar, format "D d M Y" |
+| `timeSlot.label` | Tijdslot weergave (bv. "10:00 - 12:00") |
+| `visitors_count` | Aantal bezoekers, sorteerbaar |
+| `status` | Badge: groen (confirmed), rood (cancelled), blauw (completed) |
+| `created_at` / `updated_at` | Standaard verborgen, aan te zetten |
+
+**Filters:** DateRangeFilter (van/tot) + SelectFilter op tijdslot.
+
+**Acties per rij:**
+- **Bekijken** — Opent read-only infolist
+- **Bewerken** — Uitgeschakeld als status `cancelled` is
+- **Annuleren** — Rode knop met bevestigingsdialoog, zet status op `cancelled` en slaat `cancelled_at` timestamp op
+
+**Formulier** (`ReservationForm.php`) — Twee secties, beide uitgeschakeld bij geannuleerde reservaties:
+
+1. **Reservatie** — `public_code` (read-only), `date` (reactive datepicker), `time_slot_id` (reactive select met helper text die resterende capaciteit toont: "Resterend: X plaatsen (capaciteit: Y, gereserveerd: Z)"), `status` (enum select)
+2. **Bezoekers** — Repeater met voornaam, achternaam (verplicht) en abonnementsnummer (optioneel, mod97-validatie). Minimum 1, maximum = resterende capaciteit van het gekozen tijdslot.
+
+**Infolist** (`ReservationInfolist.php`) — Read-only weergave met drie secties:
+1. **Reservatie** — public_code (kopieerbaar), datum, tijdslot, aantal bezoekers
+2. **Bezoekers** — Repeater met naam en abonnementsnummer (badge, "–" als leeg)
+3. **Metadata** — created_at en updated_at (standaard ingeklapt)
+
+### TimeSlotResource
+
+**Tabel** (`TimeSlotsTable.php`) — Gesorteerd op starttijd.
+
+| Kolom | Details |
+|-------|---------|
+| `start_time` | Sorteerbaar |
+| `end_time` | Sorteerbaar |
+| `recurring` | Icoon (boolean) |
+
+**Verwijderbeveiliging:** Bij verwijderen wordt `hasFutureReservations()` gecheckt. Heeft het tijdslot toekomstige bevestigde reservaties, dan wordt verwijdering geblokkeerd met een foutmelding.
+
+**Formulier** (`TimeSlotForm.php`) — `start_time` en `end_time` (regex `HH:MM`), `recurring` toggle (standaard aan).
+
+### TimeSlotCapacityResource
+
+**Tabel** (`TimeSlotCapacitiesTable.php`) — Gesorteerd op datum. Bevat een **subquery** die `reserved_count` berekent via een join op reservations + visitors (alleen status confirmed).
+
+| Kolom | Details |
+|-------|---------|
+| `date` | Sorteerbaar |
+| `timeSlot.label` | Tijdslot weergave |
+| `capacity` | **Inline bewerkbaar** (TextInputColumn), numeriek, min 0 |
+| `reserved_count` | Aantal gereserveerde bezoekers (subquery) |
+| `left` | Berekend: `max(0, capacity - reserved_count)` |
+
+**Filters:** DateRangeFilter + SelectFilter op tijdslot.
+
+**Formulier** (`TimeSlotCapacityForm.php`) — Datum, tijdslot (met inline aanmaak van nieuw tijdslot), capaciteit (standaard 200).
+
+**Duplicaatpreventie:** Zowel `CreateTimeSlotCapacity` als `EditTimeSlotCapacity` controleren voor het opslaan of er al een record bestaat voor dezelfde datum + tijdslot combinatie. Bij duplicaat wordt een foutmelding getoond en de actie gestopt.
+
+### DateRangeFilter
+
+Herbruikbaar filter (`Filters/DateRangeFilter.php`) met twee DatePickers (van/tot). Configureerbare kolomnaam (standaard `date`). Wordt gebruikt door zowel ReservationsTable als TimeSlotCapacitiesTable.
+
+### VisitorsAnalytics pagina
+
+Pagina op `/admin/visitors-analytics` met:
+- Datumbereik selectie (standaard: 30 dagen terug tot 30 dagen vooruit)
+- Automatische swap als "van" > "tot"
+- Dispatcht `analyticsRangeUpdated` event naar de widget
+
+### ReservationsTimeSeries widget
+
+Lijndiagram (Chart.js) dat bezoekers per dag toont. Verschijnt op het dashboard en de analytics pagina.
+
+- **Polling:** Elke 60 seconden automatisch vernieuwen
+- **Data:** Join op visitors + reservations, filtert op confirmed/completed status
+- **Vult ontbrekende dagen** aan met 0
+- **Y-as:** Integers, begint bij 0
+- **Luistert** naar `analyticsRangeUpdated` event van de analytics pagina
 
 ## E-mail Notificaties
 
