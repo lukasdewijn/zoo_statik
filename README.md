@@ -1,45 +1,196 @@
-**Edit a file, create a new file, and clone from Bitbucket in under 2 minutes**
+# Zoo Reservatiesysteem
 
-When you're done, you can delete the content in this README and update the file with details for others getting started with your repository.
+Een reservatieplatform voor dierentuinbezoeken gebouwd met Laravel 12, Livewire 4, en Filament 5. Bezoekers kunnen online tijdsloten reserveren, bevestigingsmails ontvangen en reservaties annuleren. Beheerders hebben een volledig dashboard met capaciteitsbeheer, analytics en notificaties.
 
-*We recommend that you open this README in another tab as you perform the tasks below. You can [watch our video](https://youtu.be/0ocf7u76WSo) for a full demo of all the steps in this tutorial. Open the video in a new tab to avoid leaving Bitbucket.*
+## Tech Stack
 
----
+| Laag | Technologie |
+|------|-------------|
+| Backend | Laravel 12, PHP 8.2+ |
+| Frontend | Livewire 4, Flux 2.9, Tailwind CSS 4, Alpine.js |
+| Admin Panel | Filament 5 |
+| Authenticatie | Laravel Fortify (met 2FA) |
+| Database | SQLite (dev) / MySQL (prod) |
+| Mail | Postmark (stream: `zoomail`) |
+| Testing | Pest 4 |
+| Build | Vite 7 |
 
-## Edit a file
+## Installatie
 
-You’ll start by editing this README file to learn how to edit a file in Bitbucket.
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+npm install && npm run build
+php artisan db:seed          # maakt standaard tijdsloten + testgebruiker
+```
 
-1. Click **Source** on the left side.
-2. Click the README.md link from the list of files.
-3. Click the **Edit** button.
-4. Delete the following text: *Delete this line to make a change to the README from Bitbucket.*
-5. After making your change, click **Commit** and then **Commit** again in the dialog. The commit page will open and you’ll see the change you just made.
-6. Go back to the **Source** page.
+Ontwikkelen (server + queue + logs + Vite tegelijk):
 
----
+```bash
+composer dev
+```
 
-## Create a file
+## Projectstructuur
 
-Next, you’ll add a new file to this repository.
+```
+app/
+├── Console/Commands/       # Artisan commando's (capaciteit genereren, reminders, cleanup, rapport)
+├── Enums/                  # ReservationStatus (confirmed, cancelled, completed)
+├── Filament/               # Admin panel (resources, pages, widgets, filters)
+├── Http/
+│   ├── Controllers/Api/V1/ # REST API (tijdsloten, beschikbaarheid, reservaties)
+│   ├── Controllers/        # Web controllers (succes- en annuleerpagina's)
+│   ├── Requests/           # Form request validation
+│   └── Resources/Api/V1/   # API resource transformers
+├── Models/                 # Eloquent modellen
+├── Notifications/          # E-mail notificaties
+├── Providers/              # Service & Filament providers
+├── Rules/                  # Custom validatieregels
+└── Services/               # Business logic (ReservationService)
+```
 
-1. Click the **New file** button at the top of the **Source** page.
-2. Give the file a filename of **contributors.txt**.
-3. Enter your name in the empty file space.
-4. Click **Commit** and then **Commit** again in the dialog.
-5. Go back to the **Source** page.
+## Datamodellen
 
-Before you move on, go ahead and explore the repository. You've already seen the **Source** page, but check out the **Commits**, **Branches**, and **Settings** pages.
+### Reservation
+Centrale entiteit. Elke reservatie heeft een unieke `public_code` (UUID), een datum, een tijdslot en een contacte-mail. Status: `confirmed` / `cancelled` / `completed`.
 
----
+**Relaties:** `belongsTo(TimeSlot)`, `hasMany(Visitor)`
 
-## Clone a repository
+### TimeSlot
+Tijdvensters (bv. 10:00-12:00). Heeft een `recurring` vlag die aangeeft of het tijdslot dagelijks herhaalt. Geeft automatisch een `label` attribuut terug ("HH:MM - HH:MM").
 
-Use these steps to clone from SourceTree, our client for using the repository command-line free. Cloning allows you to work on your files locally. If you don't yet have SourceTree, [download and install first](https://www.sourcetreeapp.com/). If you prefer to clone from the command line, see [Clone a repository](https://confluence.atlassian.com/x/4whODQ).
+**Relaties:** `hasMany(Reservation)`, `hasMany(TimeSlotCapacity)`
 
-1. You’ll see the clone button under the **Source** heading. Click that button.
-2. Now click **Check out in SourceTree**. You may need to create a SourceTree account or log in.
-3. When you see the **Clone New** dialog in SourceTree, update the destination path and name if you’d like to and then click **Clone**.
-4. Open the directory you just created to see your repository’s files.
+### TimeSlotCapacity
+Capaciteit per datum per tijdslot (standaard 200). Houdt bij hoeveel plaatsen beschikbaar zijn. Heeft helper-methodes: `remainingCapacity()`, `reservedCount()`, `availableDates()`.
 
-Now that you're more familiar with your Bitbucket repository, go ahead and add a new file locally. You can [push your change back to Bitbucket with SourceTree](https://confluence.atlassian.com/x/iqyBMg), or you can [add, commit,](https://confluence.atlassian.com/x/8QhODQ) and [push from the command line](https://confluence.atlassian.com/x/NQ0zDQ).
+Wanneer een capaciteitsrecord verwijderd wordt, worden alle gekoppelde bevestigde reservaties automatisch geannuleerd en ontvangen bezoekers een annuleringsmail.
+
+**Relaties:** `belongsTo(TimeSlot)`
+
+### Visitor
+Bezoeker gekoppeld aan een reservatie. Velden: voornaam, achternaam en optioneel abonnementsnummer.
+
+**Relaties:** `belongsTo(Reservation)`
+
+## API Endpoints
+
+Base URL: `/api/v1/` — Rate limit: 60 req/min per IP
+
+| Methode | Endpoint | Beschrijving |
+|---------|----------|--------------|
+| `GET` | `/ping` | Health check |
+| `GET` | `/time-slots` | Alle tijdsloten ophalen |
+| `GET` | `/availability?date=Y-m-d` | Beschikbaarheid per tijdslot voor een datum |
+| `GET` | `/available-dates` | Datums met beschikbaarheid (90 dagen vooruit) |
+| `POST` | `/reservations` | Nieuwe reservatie aanmaken |
+| `GET` | `/reservations/{public_code}` | Reservatie opvragen |
+| `POST` | `/reservations/{public_code}/cancel` | Reservatie annuleren |
+
+### Reservatie aanmaken — `POST /reservations`
+
+```json
+{
+  "date": "2026-03-15",
+  "time_slot_id": 1,
+  "contact_email": "bezoeker@example.com",
+  "visitors": [
+    { "first_name": "Jan", "last_name": "Peeters", "subscription_number": null },
+    { "first_name": "Marie", "last_name": "Janssens", "subscription_number": "1234567897" }
+  ]
+}
+```
+
+## Webroutes
+
+| Route | Beschrijving |
+|-------|--------------|
+| `/reservation` | Reservatieformulier (Livewire) |
+| `/reservations/success/{code}` | Bevestigingspagina na reservatie |
+| `/reservations/cancel/{code}` | Annuleerpagina (signed URL) |
+| `/reservations/cancelled/{code}` | Bevestiging van annulering |
+| `/admin` | Filament admin panel |
+
+## Artisan Commando's
+
+| Commando | Beschrijving |
+|----------|--------------|
+| `timeslots:generate-capacities` | Genereert capaciteitsrecords voor recurring tijdsloten (standaard 360 dagen, weekdagen) |
+| `reservations:send-reminders` | Stuurt herinneringsmails voor reservaties van morgen |
+| `reservations:cleanup-expired` | Markeert verlopen reservaties als `completed` |
+| `analytics:daily-report` | Stuurt dagelijks bezoekersrapport naar admin |
+
+Opties voor capaciteitsgeneratie:
+```bash
+php artisan timeslots:generate-capacities --days=360 --include-weekends
+```
+
+## Admin Panel (Filament)
+
+Toegankelijk via `/admin` met authenticatie + optionele 2FA.
+
+### Resources
+
+- **Reservaties** — Overzicht met zoeken, filteren (datumbereik, tijdslot), sorteren. Acties: bekijken, bewerken, annuleren. Toont status als gekleurde badge. Capaciteitsinfo zichtbaar bij bewerken.
+- **Tijdsloten** — CRUD voor tijdvensters met start/eindtijd en recurring-toggle.
+- **Tijdslotcapaciteiten** — Beheer capaciteit per datum/tijdslot. Inline bewerkbaar. Toont gereserveerd aantal en resterende plaatsen.
+
+### Analytics
+
+Pagina `/admin/visitors-analytics` met een lijndiagram (bezoekers per dag) en configureerbaar datumbereik. De grafiek toont ook op het dashboard.
+
+## E-mail Notificaties
+
+| Notificatie | Trigger | Inhoud |
+|-------------|---------|--------|
+| `ReservationConfirmed` | Na reservatie aanmaken | Bevestiging + reservatiecode + annuleringslink (7 dagen geldig) |
+| `ReservationReminder` | Dagelijks commando | Herinnering voor bezoek morgen |
+| `ReservationCancelledByAdmin` | Capaciteit verwijderd / admin annulering | Excuusmail + link om opnieuw te reserveren |
+| `DailyVisitorReport` | Dagelijks commando | Bezoekersstatistieken per tijdslot met bezettingspercentages |
+
+## Validatieregels
+
+- **SubscriptionNumber** — Optioneel. Indien ingevuld: exact 10 cijfers met mod97 checksum (Europees abonnementsnummer).
+- **DateHasAvailability** — Controleert of de gekozen datum minstens 1 tijdslot met resterende capaciteit heeft.
+
+## Belangrijke Technische Details
+
+- **Race condition preventie** — De `ReservationService` gebruikt pessimistic locking (`SELECT ... FOR UPDATE`) in een database transactie om dubbele boekingen te voorkomen.
+- **E-mail veiligheid** — Bevestigingsmails worden buiten de transactie verstuurd, zodat een mailfout de reservatie niet terugdraait.
+- **Signed URLs** — Annuleringslinks in e-mails zijn cryptografisch ondertekend en 7 dagen geldig.
+- **Capaciteitscascade** — Verwijderen van een capaciteitsrecord annuleert automatisch alle gekoppelde reservaties en stuurt notificaties.
+- **Standaardcapaciteit** — 200 per tijdslot. Wordt automatisch aangemaakt bij de eerste reservatie als er geen record bestaat.
+
+## Taal
+
+De applicatie is volledig in het Nederlands. Vertalingen staan in `resources/lang/nl/zoo.php`.
+
+## Standaard Tijdsloten (Seeder)
+
+| Tijdslot |
+|----------|
+| 10:00 - 12:00 |
+| 12:00 - 14:00 |
+| 14:00 - 16:00 |
+| 16:00 - 18:00 |
+
+## Environment Variabelen
+
+| Variabele | Beschrijving |
+|-----------|--------------|
+| `MAIL_MAILER` | Mail driver (standaard: `log`) |
+| `MAIL_FROM_ADDRESS` | Afzenderadres |
+| `ADMIN_EMAIL` | E-mailadres voor dagelijks rapport |
+| `POSTMARK_TOKEN` | Postmark API key |
+
+## Tests
+
+```bash
+php artisan test
+# of
+composer test    # lint + tests
+```
+
+Test factories beschikbaar voor: `Reservation`, `TimeSlot`, `TimeSlotCapacity`, `Visitor`.
